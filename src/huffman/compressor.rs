@@ -1,20 +1,12 @@
 use bitvec::vec::BitVec;
-use serde::{Deserialize, Serialize};
-
-use super::tree::HuffTree;
-use crate::utils::{file::open_file, min_heap::MinHeap};
 use std::{
     collections::HashMap,
     fs::File,
-    io::{BufRead, BufWriter, Error, ErrorKind, Write},
+    io::{BufRead, BufWriter, Error, Write},
 };
 
-#[derive(Serialize, Deserialize, Debug)]
-struct Header {
-    frequency_list: HashMap<char, u32>,
-}
-
-const PSEUDO_EOF: char = '\0';
+use super::huffman::{build_tree, Header};
+use crate::utils::file::open_file;
 
 type GenericError = Box<dyn std::error::Error>;
 
@@ -48,24 +40,6 @@ fn read_file(filename: &str) -> Result<(HashMap<char, u32>, String), Error> {
         }
     }
     Ok((freq, contents))
-}
-
-fn build_tree(freq: &HashMap<char, u32>) -> Result<HuffTree, Error> {
-    let temp_vec = Vec::with_capacity(freq.len() + 1); // +1 to account for EOF char
-    let mut heap: MinHeap<HuffTree> = temp_vec.into();
-
-    heap.push(HuffTree::leaf(PSEUDO_EOF, 1));
-    for (ch, freq) in freq {
-        heap.push(HuffTree::leaf(*ch, *freq));
-    }
-
-    match merge(&mut heap) {
-        Some(tree) => Ok(tree),
-        None => Err(Error::new(
-            ErrorKind::Other,
-            "Unexpected error while merging the Huffman tree",
-        )),
-    }
 }
 
 fn write_header(
@@ -103,15 +77,6 @@ fn write_encoded_content(
         writer.write_all(bit_buffer.drain(..8).collect::<BitVec<u8>>().as_raw_slice())?;
     }
     Ok(())
-}
-
-fn merge(heap: &mut MinHeap<HuffTree>) -> Option<HuffTree> {
-    while heap.len() > 1 {
-        let right = heap.pop()?;
-        let left = heap.pop()?;
-        heap.push(HuffTree::combine(left, right));
-    }
-    heap.pop()
 }
 
 fn count_char_frequency(text: &str, freq: &mut HashMap<char, u32>) {
