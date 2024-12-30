@@ -5,6 +5,7 @@ pub struct MinHeap<T> {
     heap: BinaryHeap<Reverse<T>>,
 }
 
+#[allow(dead_code)]
 impl<T: Ord> MinHeap<T> {
     pub fn new() -> Self {
         MinHeap {

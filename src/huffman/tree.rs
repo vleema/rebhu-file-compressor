@@ -2,6 +2,9 @@ use std::{cmp::Ordering, collections::HashMap};
 
 use bitvec::vec::BitVec;
 
+use super::{HuffTable, InverseHuffTable};
+
+#[derive(Debug)]
 pub enum HuffTree {
     Leaf {
         ch: char,
@@ -35,7 +38,7 @@ impl Ord for HuffTree {
 }
 
 impl HuffTree {
-    pub fn pre_order_code(&self, code: BitVec) -> HashMap<char, BitVec> {
+    pub fn pre_order_code(&self, code: BitVec) -> HuffTable {
         let mut traversal_leafs: HashMap<char, BitVec> = HashMap::new();
         match self {
             Self::Leaf { ch, .. } => {
@@ -49,6 +52,25 @@ impl HuffTree {
                 let mut right_code = code.clone();
                 right_code.push(true); // true represents 1
                 traversal_leafs.extend(right.pre_order_code(right_code));
+            }
+        }
+        traversal_leafs
+    }
+
+    pub fn pre_order_char(&self, code: BitVec) -> InverseHuffTable {
+        let mut traversal_leafs: HashMap<BitVec, char> = HashMap::new();
+        match self {
+            Self::Leaf { ch, .. } => {
+                traversal_leafs.insert(code, *ch);
+            }
+            Self::Node { left, right, .. } => {
+                let mut left_code = code.clone();
+                left_code.push(false); // false represents 0
+                traversal_leafs.extend(left.pre_order_char(left_code));
+
+                let mut right_code = code.clone();
+                right_code.push(true); // true represents 1
+                traversal_leafs.extend(right.pre_order_char(right_code));
             }
         }
         traversal_leafs
