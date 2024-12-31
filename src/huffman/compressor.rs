@@ -7,9 +7,9 @@ use std::{
 
 use super::{
     huff::{build_table, build_tree, FrequencyList},
-    GenericError, HuffTable, PSEUDO_EOF,
+    HuffTable, PSEUDO_EOF,
 };
-use crate::utils::file::open_file;
+use crate::utils::{file::open_file, GenericError};
 
 pub fn huff_compress(filename: &str, result_filename: &str) -> Result<(), GenericError> {
     let (freq_list, contents) = read_file(filename)?;

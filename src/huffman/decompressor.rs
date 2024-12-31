@@ -5,20 +5,21 @@ use std::{
 
 use bitvec::{slice::BitSlice, vec::BitVec};
 
+use crate::utils::GenericError;
+
 use super::{
     huff::{build_inverse_table, build_tree, FrequencyList},
-    tree::HuffTree,
-    GenericError, InverseHuffTable, PSEUDO_EOF,
+    InverseHuffTable, PSEUDO_EOF,
 };
 
-pub fn huff_decompress(filename: &str, result_filename: &str) -> Result<HuffTree, GenericError> {
+pub fn huff_decompress(filename: &str, result_filename: &str) -> Result<(), GenericError> {
     let file = File::open(filename)?;
     let mut reader = BufReader::new(file);
     let freq_list = read_header(&mut reader)?;
     let tree = build_tree(&freq_list)?;
     let inverse_table = build_inverse_table(&tree);
     decode_into_file(&inverse_table, &mut reader, result_filename)?;
-    Ok(tree)
+    Ok(())
 }
 
 fn read_header(reader: &mut BufReader<File>) -> io::Result<FrequencyList> {

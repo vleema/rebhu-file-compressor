@@ -3,8 +3,8 @@ use serde::{Deserialize, Serialize};
 
 use std::collections::HashMap;
 
-use super::{tree::HuffTree, GenericError, HuffTable, InverseHuffTable};
-use crate::utils::min_heap::MinHeap;
+use super::{tree::HuffTree, HuffTable, InverseHuffTable};
+use crate::utils::{min_heap::MinHeap, GenericError};
 
 #[derive(Serialize, Deserialize, Debug)]
 struct FrequencyEntry {
