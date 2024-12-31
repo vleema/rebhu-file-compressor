@@ -57,7 +57,7 @@ fn main() {
 #[command(name ="rebhu",
     author = "Vinicius de Lima", 
     version,
-    about = "Simple file compressor made in rust", 
+    about = "Simple file compressor made in rust 🦀", 
     long_about = None)]
 #[command(group = clap::ArgGroup::new("operation").args(&["compress", "decompress"]).required(true))]
 pub struct Args {
