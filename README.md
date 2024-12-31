@@ -37,3 +37,7 @@ Options:
   ```
   cargo r --release -- <args...>
   ```
+
+## Known Problems
+
+- Conflict with PSEUDO EOF character in regular binary files
