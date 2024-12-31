@@ -44,15 +44,17 @@ fn decode_into_file(
         let bits: &BitSlice<u8> = BitSlice::from_element(&byte);
         for bit in bits {
             acc.push(*bit);
-            if let Some(ch) = huff_table.get(&acc) {
-                if ch == &PSEUDO_EOF {
-                    break;
+            if let Some(byte) = huff_table.get(&acc) {
+                if byte == &PSEUDO_EOF {
+                    writer.flush()?;
+                    return Ok(());
                 }
-                write!(writer, "{}", ch)?;
+                writer.write_all(&[*byte])?;
                 acc.clear();
             }
         }
     }
+    writer.flush()?;
     Ok(())
 }
 

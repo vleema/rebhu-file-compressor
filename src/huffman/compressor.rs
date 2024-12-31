@@ -1,15 +1,15 @@
 use bitvec::vec::BitVec;
 use std::{
     collections::HashMap,
-    fs::File,
-    io::{BufRead, BufWriter, Error, Write},
+    fs::{self, File},
+    io::{BufWriter, Error, Write},
 };
 
 use super::{
     huff::{build_table, build_tree, FrequencyList},
     HuffTable, PSEUDO_EOF,
 };
-use crate::utils::{file::open_file, GenericError};
+use crate::utils::GenericError;
 
 pub fn huff_compress(filename: &str, result_filename: &str) -> Result<(), GenericError> {
     let (freq_list, contents) = read_file(filename)?;
@@ -21,21 +21,12 @@ pub fn huff_compress(filename: &str, result_filename: &str) -> Result<(), Generi
     write_encoded_content(huff_table, contents, &mut writer)
 }
 
-fn read_file(filename: &str) -> Result<(FrequencyList, String), Error> {
-    let mut file = open_file(filename)?;
+fn read_file(filename: &str) -> Result<(FrequencyList, Vec<u8>), Error> {
+    let buffer: Vec<u8> = fs::read(filename)?;
     let mut freq_map = HashMap::new();
-    let mut contents = String::new();
-    let mut buffer = String::new();
-    while let Ok(n) = file.read_line(&mut buffer) {
-        if n == 0 {
-            break;
-        }
-        count_char_frequency(&buffer, &mut freq_map);
-        contents.push_str(&buffer);
-        buffer.clear();
-    }
+    count_byte_frequency(&buffer, &mut freq_map);
     freq_map.insert(PSEUDO_EOF, 1);
-    Ok((FrequencyList::from_hashmap(&freq_map), contents))
+    Ok((FrequencyList::from_hashmap(&freq_map), buffer))
 }
 
 fn write_header(
@@ -50,15 +41,15 @@ fn write_header(
 
 fn write_encoded_content(
     huff_table: HuffTable,
-    contents: String,
+    content: Vec<u8>,
     writer: &mut BufWriter<File>,
 ) -> Result<(), GenericError> {
     let mut bit_buffer: BitVec = BitVec::new();
-    for ch in contents.chars() {
-        let ch_code = huff_table
-            .get(&ch)
+    for byte in content {
+        let byte_code = huff_table
+            .get(&byte)
             .ok_or("Unexpected error while extracting code from huffman table")?;
-        bit_buffer.extend(ch_code);
+        bit_buffer.extend(byte_code);
         while bit_buffer.len() >= 8 {
             let byte = bit_buffer.drain(..8).collect::<BitVec<u8>>();
             writer.write_all(byte.as_raw_slice())?;
@@ -80,8 +71,8 @@ fn write_encoded_content(
     Ok(())
 }
 
-fn count_char_frequency(text: &str, freq: &mut HashMap<char, u32>) {
-    for ch in text.chars() {
-        *freq.entry(ch).or_insert(0) += 1;
+fn count_byte_frequency(data: &Vec<u8>, freq: &mut HashMap<u8, u32>) {
+    for byte in data {
+        *freq.entry(*byte).or_insert(0) += 1;
     }
 }

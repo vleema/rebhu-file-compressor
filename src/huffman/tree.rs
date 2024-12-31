@@ -7,7 +7,7 @@ use super::{HuffTable, InverseHuffTable};
 #[derive(Debug)]
 pub enum HuffTree {
     Leaf {
-        ch: char,
+        byte: u8,
         freq: u32,
     },
     Node {
@@ -39,10 +39,10 @@ impl Ord for HuffTree {
 
 impl HuffTree {
     pub fn pre_order_code(&self, code: BitVec) -> HuffTable {
-        let mut traversal_leafs: HashMap<char, BitVec> = HashMap::new();
+        let mut traversal_leafs: HashMap<u8, BitVec> = HashMap::new();
         match self {
-            Self::Leaf { ch, .. } => {
-                traversal_leafs.insert(*ch, code);
+            Self::Leaf { byte, .. } => {
+                traversal_leafs.insert(*byte, code);
             }
             Self::Node { left, right, .. } => {
                 let mut left_code = code.clone();
@@ -57,20 +57,20 @@ impl HuffTree {
         traversal_leafs
     }
 
-    pub fn pre_order_char(&self, code: BitVec) -> InverseHuffTable {
-        let mut traversal_leafs: HashMap<BitVec, char> = HashMap::new();
+    pub fn pre_order_byte(&self, code: BitVec) -> InverseHuffTable {
+        let mut traversal_leafs: HashMap<BitVec, u8> = HashMap::new();
         match self {
-            Self::Leaf { ch, .. } => {
-                traversal_leafs.insert(code, *ch);
+            Self::Leaf { byte, .. } => {
+                traversal_leafs.insert(code, *byte);
             }
             Self::Node { left, right, .. } => {
                 let mut left_code = code.clone();
                 left_code.push(false); // false represents 0
-                traversal_leafs.extend(left.pre_order_char(left_code));
+                traversal_leafs.extend(left.pre_order_byte(left_code));
 
                 let mut right_code = code.clone();
                 right_code.push(true); // true represents 1
-                traversal_leafs.extend(right.pre_order_char(right_code));
+                traversal_leafs.extend(right.pre_order_byte(right_code));
             }
         }
         traversal_leafs
@@ -84,8 +84,8 @@ impl HuffTree {
         }
     }
 
-    pub fn leaf(ch: char, freq: u32) -> HuffTree {
-        Self::Leaf { ch, freq }
+    pub fn leaf(byte: u8, freq: u32) -> HuffTree {
+        Self::Leaf { byte, freq }
     }
 
     fn freq(&self) -> u32 {
