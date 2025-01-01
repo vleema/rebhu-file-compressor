@@ -1,37 +1,49 @@
 mod huffman;
 mod utils;
 
+type Operation = fn(&str, &str) -> Result<(), utils::GenericError>;
+
 fn main() {
     let args = <Args as clap::Parser>::parse();
+    abort_if_output_does_not_match_input(&args.files, &args.output);
+    let (operation, show_compression_rate) = get_operation(args.compress);
+    apply_operation(operation, args.files, args.output, show_compression_rate);
+}
 
-    if let Some(output) = &args.output {
-        if args.files.len() != output.len() {
+fn abort_if_output_does_not_match_input(files: &[String], output: &Option<Vec<String>>) {
+    if let Some(output) = output {
+        if files.len() != output.len() {
             <Args as clap::CommandFactory>::command()
                 .error(
                     clap::error::ErrorKind::WrongNumberOfValues,
                     format!(
                         "Number of '--output' arguments ({}) should be the same as <FILES> ({})",
                         output.len(),
-                        args.files.len(),
+                        files.len(),
                     ),
                 )
                 .exit()
         }
     }
-    let operation: fn(&str, &str) -> Result<(), utils::GenericError>;
-    let mut show_compression_rate = false;
-    if args.compress {
-        operation = huffman::compressor::huff_compress;
-        show_compression_rate = args.verbose;
-    } else if args.decompress {
-        operation = huffman::decompressor::huff_decompress;
+}
+
+fn get_operation(compress: bool) -> (Operation, bool) {
+    if compress {
+        (huffman::compressor::huff_compress, true)
     } else {
-        eprintln!("Unexpected error, while selecting operation");
-        std::process::exit(1)
+        (huffman::decompressor::huff_decompress, false)
     }
-    for i in 0..args.files.len() {
-        let file = args.files.get(i).unwrap();
-        let output = match args.output {
+}
+
+fn apply_operation(
+    operation: fn(&str, &str) -> Result<(), utils::GenericError>,
+    files: Vec<String>,
+    output_files: Option<Vec<String>>,
+    show_compression_rate: bool,
+) {
+    for i in 0..files.len() {
+        let file = files.get(i).unwrap();
+        let output = match output_files {
             Some(ref outputs) => outputs.get(i).unwrap(),
             None => &format!("{}.rbh", file),
         };

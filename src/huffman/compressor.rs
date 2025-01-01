@@ -9,18 +9,26 @@ use super::{
     huff::{build_table, build_tree, FrequencyList},
     HuffTable,
 };
-use crate::utils::GenericError;
+use crate::utils::{
+    file::{drain_byte, initialize_writer},
+    GenericError,
+};
 
 pub fn huff_compress(filename: &str, result_filename: &str) -> Result<(), GenericError> {
     let (freq_list, contents) = read_file(filename)?;
-    let tree = build_tree(&freq_list)?;
-    let huff_table = build_table(&tree);
-    let file = File::create(result_filename)?;
-    let mut writer = BufWriter::new(file);
-    write_header(freq_list, &mut writer)?;
-    let padding_bits = write_encoded_content(huff_table, contents, &mut writer)?;
-    write_padding_bits_into_header(padding_bits, &mut writer)?;
+    let table = build_compression_table(&freq_list)?;
+
+    let mut writer = initialize_writer(result_filename)?;
+
+    write_header(&freq_list, &mut writer)?;
+    let padding = write_encoded_content(table, contents, &mut writer)?;
+
+    write_padding_bits_into_header(padding, &mut writer)?;
     Ok(())
+}
+
+fn build_compression_table(freq_list: &FrequencyList) -> Result<HuffTable, GenericError> {
+    Ok(build_table(&build_tree(freq_list)?))
 }
 
 fn read_file(filename: &str) -> Result<(FrequencyList, Vec<u8>), Error> {
@@ -31,7 +39,7 @@ fn read_file(filename: &str) -> Result<(FrequencyList, Vec<u8>), Error> {
 }
 
 fn write_header(
-    freq_list: FrequencyList,
+    freq_list: &FrequencyList,
     writer: &mut BufWriter<File>,
 ) -> Result<(), GenericError> {
     let serialized_header = bincode::serialize(&freq_list)?;
@@ -46,34 +54,47 @@ fn write_encoded_content(
     content: Vec<u8>,
     writer: &mut BufWriter<File>,
 ) -> Result<u8, GenericError> {
-    let mut bit_buffer: BitVec = BitVec::new();
-    let mut padding_bits = 0;
+    let mut buffer: BitVec = BitVec::new();
+    write_complete_bytes(&mut buffer, &huff_table, &content, writer)?;
+    write_last_byte(&mut buffer, writer)
+}
+
+fn write_complete_bytes(
+    buffer: &mut BitVec,
+    huff_table: &HuffTable,
+    content: &Vec<u8>,
+    writer: &mut BufWriter<File>,
+) -> Result<(), GenericError> {
     for byte in content {
         let byte_code = huff_table
-            .get(&byte)
+            .get(byte)
             .ok_or("Unexpected error while extracting code from huffman table")?;
-        bit_buffer.extend(byte_code);
-        while bit_buffer.len() >= 8 {
-            let byte = bit_buffer.drain(..8).rev().collect::<BitVec<u8>>();
+        buffer.extend(byte_code);
+        while buffer.len() >= 8 {
+            let byte = drain_byte(buffer);
             writer.write_all(byte.as_raw_slice())?;
         }
     }
-    if !bit_buffer.is_empty() {
-        padding_bits = 8 - bit_buffer.len();
-        for _ in 0..padding_bits {
-            bit_buffer.push(false);
+    Ok(())
+}
+
+fn write_last_byte(buffer: &mut BitVec, writer: &mut BufWriter<File>) -> Result<u8, GenericError> {
+    let mut padding = 0;
+    if !buffer.is_empty() {
+        padding = 8 - buffer.len();
+        for _ in 0..padding {
+            buffer.push(false);
         }
-        let byte = bit_buffer.drain(..8).rev().collect::<BitVec<u8>>();
+        let byte = drain_byte(buffer);
         writer.write_all(byte.as_raw_slice())?;
     }
     writer.flush()?;
-    Ok(padding_bits as u8)
+    Ok(padding as u8)
 }
 
 fn write_padding_bits_into_header(padding: u8, writer: &mut BufWriter<File>) -> Result<(), Error> {
-    writer.get_ref().seek(SeekFrom::Start(0))?;
-    writer.write_all(&[padding])?;
-    Ok(())
+    writer.seek(SeekFrom::Start(0))?;
+    writer.write_all(&[padding])
 }
 
 fn count_byte_frequency(data: &Vec<u8>, freq: &mut HashMap<u8, u32>) {
