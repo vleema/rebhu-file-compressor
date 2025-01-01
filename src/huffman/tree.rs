@@ -38,8 +38,8 @@ impl Ord for HuffTree {
 }
 
 impl HuffTree {
-    pub fn pre_order_code(&self, code: BitVec) -> HuffTable {
-        let mut traversal_leafs: HashMap<u8, BitVec> = HashMap::new();
+    pub fn pre_order_code(&self, code: BitVec<u8>) -> HuffTable {
+        let mut traversal_leafs: HashMap<u8, BitVec<u8>> = HashMap::new();
         match self {
             Self::Leaf { byte, .. } => {
                 traversal_leafs.insert(*byte, code);

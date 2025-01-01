@@ -7,6 +7,5 @@ pub mod decompressor;
 mod huff;
 mod tree;
 
-const PSEUDO_EOF: u8 = b'\0';
-type HuffTable = HashMap<u8, BitVec>;
+type HuffTable = HashMap<u8, BitVec<u8>>;
 type InverseHuffTable = HashMap<BitVec, u8>;
